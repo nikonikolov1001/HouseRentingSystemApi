@@ -1,4 +1,5 @@
 const tokenKey = "hrs_jwt_token";
+
 const housesGrid = document.getElementById("housesGrid");
 const messageBox = document.getElementById("messageBox");
 const authState = document.getElementById("authState");
@@ -14,15 +15,25 @@ const openRegisterBtn = document.getElementById("openRegisterBtn");
 const createSection = document.getElementById("create");
 const addHouseNavItem = document.getElementById("addHouseNavItem");
 const addHouseLink = document.getElementById("addHouseLink");
+
+const categoryFilter = document.getElementById("categoryFilter");
+const searchInput = document.getElementById("searchInput");
+const sortingSelect = document.getElementById("sortingSelect");
+
 const authModal = new bootstrap.Modal(document.getElementById("authModal"));
 
 document.getElementById("refreshBtn").addEventListener("click", loadHouses);
 document.getElementById("logoutBtn").addEventListener("click", logout);
 loginForm.addEventListener("submit", login);
 registerForm.addEventListener("submit", register);
-document.getElementById("createHouseForm").addEventListener("submit", createHouse);
+createForm.addEventListener("submit", createHouse);
 openLoginBtn.addEventListener("click", () => openAuthModal("login"));
 openRegisterBtn.addEventListener("click", () => openAuthModal("register"));
+
+categoryFilter.addEventListener("change", loadHouses);
+sortingSelect.addEventListener("change", loadHouses);
+searchInput.addEventListener("input", loadHouses);
+
 if (addHouseLink) {
     addHouseLink.addEventListener("click", openCreateSection);
 }
@@ -50,17 +61,15 @@ function updateAuthState() {
     if (isLogged) {
         authState.textContent = "Logged In";
         authState.className = "badge text-bg-success";
-    } else {
-        authState.textContent = "Guest";
-        authState.className = "badge text-bg-secondary";
-    }
 
-    if (isLogged) {
         guestActions.classList.add("d-none");
         userActions.classList.remove("d-none");
         addHouseNavItem.classList.remove("d-none");
         createSection.classList.remove("d-none");
     } else {
+        authState.textContent = "Guest";
+        authState.className = "badge text-bg-secondary";
+
         guestActions.classList.remove("d-none");
         userActions.classList.add("d-none");
         createSection.classList.add("d-none");
@@ -107,10 +116,6 @@ function openCreateSection(e) {
     createSection.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
-function openCreateSectionFromNav(e) {
-    openCreateSection(e);
-}
-
 async function login(e) {
     e.preventDefault();
     hideMessage();
@@ -132,7 +137,9 @@ async function login(e) {
     }
 
     const loginResult = await response.json();
+
     localStorage.setItem(tokenKey, loginResult.token);
+
     updateAuthState();
     authModal.hide();
     loginForm.reset();
@@ -166,22 +173,51 @@ async function register(e) {
 }
 
 async function loadHouses() {
-    housesGrid.innerHTML = `<div class="col-12"><div class="alert alert-light">Loading houses...</div></div>`;
+    housesGrid.innerHTML = `
+        <div class="col-12">
+            <div class="alert alert-light">Loading houses...</div>
+        </div>`;
 
     try {
-        const response = await fetch("/api/House/All");
+        const category = categoryFilter.value;
+        const searchTerm = searchInput.value.trim();
+        const sorting = sortingSelect.value;
+
+        const query = new URLSearchParams();
+
+        if (category) {
+            query.append("Category", category);
+        }
+
+        if (searchTerm) {
+            query.append("SearchTerm", searchTerm);
+        }
+
+        query.append("Sorting", sorting);
+        query.append("CurrentPage", "1");
+
+        const response = await fetch(`/api/House/All?${query.toString()}`);
 
         if (!response.ok) {
-            housesGrid.innerHTML = `<div class="col-12"><div class="alert alert-danger">Could not load houses.</div></div>`;
+            housesGrid.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-danger">Could not load houses.</div>
+                </div>`;
             return;
         }
 
         const result = await response.json();
 
         const houses = result.houses || result.Houses || [];
+        const categories = result.categories || result.Categories || [];
+
+        fillCategories(categories);
 
         if (!houses.length) {
-            housesGrid.innerHTML = `<div class="col-12"><div class="alert alert-secondary">No houses available.</div></div>`;
+            housesGrid.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-secondary">No houses found.</div>
+                </div>`;
             return;
         }
 
@@ -193,7 +229,9 @@ async function loadHouses() {
                         <h5 class="card-title">${escapeHtml(h.title)}</h5>
                         <p class="card-text mb-1">${escapeHtml(h.address)}</p>
                         <p class="small text-muted mb-3">$${Number(h.pricePerMonth || 0).toFixed(2)}/month</p>
-                        <button class="btn btn-outline-primary mt-auto" onclick="showDetails(${h.id})">Details</button>
+                        <button class="btn btn-outline-primary mt-auto" onclick="showDetails(${h.id})">
+                            Details
+                        </button>
                     </div>
                 </div>
             </div>
@@ -201,25 +239,46 @@ async function loadHouses() {
 
     } catch (err) {
         console.error(err);
-        housesGrid.innerHTML = `<div class="col-12"><div class="alert alert-danger">Error while loading houses.</div></div>`;
+
+        housesGrid.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger">Error while loading houses.</div>
+            </div>`;
     }
+}
+
+function fillCategories(categories) {
+    const currentValue = categoryFilter.value;
+
+    categoryFilter.innerHTML = `<option value="">All</option>`;
+
+    categories.forEach(category => {
+        categoryFilter.innerHTML += `
+            <option value="${escapeHtml(category)}">${escapeHtml(category)}</option>`;
+    });
+
+    categoryFilter.value = currentValue;
 }
 
 async function showDetails(id) {
     const response = await fetch(`/api/House/${id}`);
+
     if (!response.ok) {
         showMessage("House not found.", "warning");
         return;
     }
 
     const h = await response.json();
+
     const detailsBody = document.getElementById("detailsBody");
+
     detailsBody.innerHTML = `
-        <img src="${h.imageUrl}" alt="${escapeHtml(h.title)}">
+        <img src="${escapeHtml(h.imageUrl)}" alt="${escapeHtml(h.title)}">
         <h4>${escapeHtml(h.title)}</h4>
         <p><strong>Address:</strong> ${escapeHtml(h.address)}</p>
         <p><strong>Description:</strong> ${escapeHtml(h.description || "No description")}</p>
         <p><strong>Price:</strong> $${Number(h.pricePerMonth || 0).toFixed(2)} / month</p>
+        <p><strong>Category:</strong> ${escapeHtml(h.category || "")}</p>
     `;
 
     const modal = new bootstrap.Modal(document.getElementById("detailsModal"));
@@ -231,6 +290,7 @@ async function createHouse(e) {
     hideMessage();
 
     const token = getToken();
+
     if (!token) {
         showMessage("Login first to create a house.", "warning");
         return;
@@ -255,12 +315,23 @@ async function createHouse(e) {
     });
 
     if (!response.ok) {
-        showMessage("Create failed. Check data and token.", "danger");
+        const errorText = await response.text();
+        console.error("Create failed:", response.status, errorText);
+        showMessage(`Create failed. Status: ${response.status}`, "danger");
         return;
     }
 
     showMessage("House created successfully.", "success");
     e.target.reset();
+
+    await loadHouses();
+}
+
+function resetFilters() {
+    categoryFilter.value = "";
+    searchInput.value = "";
+    sortingSelect.value = "0";
+
     loadHouses();
 }
 
@@ -271,4 +342,4 @@ function escapeHtml(text) {
 }
 
 window.showDetails = showDetails;
-window.openCreateSectionFromNav = openCreateSectionFromNav;
+window.resetFilters = resetFilters;
