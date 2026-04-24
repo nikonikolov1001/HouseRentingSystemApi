@@ -1,0 +1,76 @@
+/* Page background */
+body {
+    background: #eaf6fb; /* light blue */
+    color: #2c3e50;
+}
+
+/* Navbar */
+.navbar {
+    background-color: #000000 !important; /* pure black */
+}
+
+.hero {
+    background-color: #1e3a5f; /* dark blue */
+    color: #ffffff;
+    padding: 60px 0;
+}
+
+    .hero h1 {
+        font-weight: 700;
+    }
+
+    .hero p {
+        color: #cbd5e1; /* softer light text */
+    }
+
+/* Cards */
+.house-card {
+    background: #ffffff; /* white cards */
+    border: none;
+    border-radius: 0.75rem;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+}
+
+    .house-card:hover {
+        transform: translateY(-4px);
+        box-shadow: 0 10px 20px rgba(0, 0, 0, 0.08);
+    }
+
+    .house-card img {
+        height: 220px;
+        object-fit: cover;
+        border-top-left-radius: 0.75rem;
+        border-top-right-radius: 0.75rem;
+    }
+
+/* Buttons (light blue accent) */
+.btn-primary {
+    background-color: #4fc3f7;
+    border-color: #4fc3f7;
+    color: #000;
+}
+
+    .btn-primary:hover {
+        background-color: #29b6f6;
+        border-color: #29b6f6;
+    }
+
+/* Outline buttons */
+.btn-outline-primary {
+    color: #4fc3f7;
+    border-color: #4fc3f7;
+}
+
+    .btn-outline-primary:hover {
+        background-color: #4fc3f7;
+        color: #fff;
+    }
+
+/* Details image */
+#detailsBody img {
+    width: 100%;
+    border-radius: 0.5rem;
+    margin-bottom: 1rem;
+    max-height: 420px;
+    object-fit: cover;
+}
