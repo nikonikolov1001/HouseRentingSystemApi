@@ -1,4 +1,5 @@
 using HouseRentingSystemApi.Data.Entities;
+using HouseRentingSystemApi.Data.DataConstants;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.AspNetCore.Identity.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore;
@@ -52,6 +53,8 @@ namespace HouseRentingSystemApi.Data
                 .OnDelete(DeleteBehavior.Restrict);
 
             SeedUsers(builder);
+            SeedRoles(builder);
+            SeedUserRoles(builder);
             SeedAgent(builder);
 
             builder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
@@ -96,6 +99,44 @@ namespace HouseRentingSystemApi.Data
                 PhoneNumber = "+359888888888",
                 UserId = "dea12856-c198-4129-b3f3-b893d8395082"
             });
+        }
+
+        private static void SeedRoles(ModelBuilder builder)
+        {
+            builder.Entity<IdentityRole>().HasData(
+                new IdentityRole
+                {
+                    Id = AppRoles.UserRoleId,
+                    Name = AppRoles.User,
+                    NormalizedName = AppRoles.User.ToUpperInvariant()
+                },
+                new IdentityRole
+                {
+                    Id = AppRoles.AgentRoleId,
+                    Name = AppRoles.Agent,
+                    NormalizedName = AppRoles.Agent.ToUpperInvariant()
+                },
+                new IdentityRole
+                {
+                    Id = AppRoles.AdminRoleId,
+                    Name = AppRoles.Admin,
+                    NormalizedName = AppRoles.Admin.ToUpperInvariant()
+                });
+        }
+
+        private static void SeedUserRoles(ModelBuilder builder)
+        {
+            builder.Entity<IdentityUserRole<string>>().HasData(
+                new IdentityUserRole<string>
+                {
+                    UserId = "dea12856-c198-4129-b3f3-b893d8395082",
+                    RoleId = AppRoles.AgentRoleId
+                },
+                new IdentityUserRole<string>
+                {
+                    UserId = "6d5800ce-d726-4fc8-83d9-d6b3ac1f591e",
+                    RoleId = AppRoles.UserRoleId
+                });
         }
     }
 }

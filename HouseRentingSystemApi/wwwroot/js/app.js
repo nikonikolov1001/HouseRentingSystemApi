@@ -107,17 +107,59 @@ function getToken() {
     return localStorage.getItem(tokenKey);
 }
 
+function getTokenPayload() {
+    const token = getToken();
+    if (!token) {
+        return null;
+    }
+
+    try {
+        const payload = token.split(".")[1];
+        const normalizedPayload = payload.replace(/-/g, "+").replace(/_/g, "/");
+        const decodedPayload = atob(normalizedPayload);
+
+        return JSON.parse(decodedPayload);
+    } catch (err) {
+        console.error("Invalid token:", err);
+        localStorage.removeItem(tokenKey);
+        return null;
+    }
+}
+
+function getUserRoles() {
+    const payload = getTokenPayload();
+    if (!payload) {
+        return [];
+    }
+
+    const roleClaim = payload["role"] ||
+        payload["roles"] ||
+        payload["http://schemas.microsoft.com/ws/2008/06/identity/claims/role"];
+
+    if (!roleClaim) {
+        return [];
+    }
+
+    return Array.isArray(roleClaim) ? roleClaim : [roleClaim];
+}
+
+function isAgent() {
+    return getUserRoles().includes("Agent");
+}
+
 function updateAuthState() {
     const isLogged = !!getToken();
+    const roles = getUserRoles();
+    const agent = roles.includes("Agent");
 
     if (isLogged) {
-        authState.textContent = "Logged In";
-        authState.className = "badge text-bg-success";
+        authState.textContent = roles.length ? roles.join(", ") : "Logged In";
+        authState.className = agent ? "badge text-bg-primary" : "badge text-bg-success";
 
         guestActions.classList.add("d-none");
         userActions.classList.remove("d-none");
 
-        addHouseNavItem.classList.remove("d-none");
+        addHouseNavItem.classList.toggle("d-none", !agent);
         myHousesNavItem.classList.remove("d-none");
 
         createSection.classList.add("d-none");
@@ -137,10 +179,18 @@ function updateAuthState() {
     }
 
     Array.from(createForm.elements).forEach(el => {
-        el.disabled = !isLogged;
+        el.disabled = !agent;
     });
 
-    createAuthNote.classList.toggle("d-none", isLogged);
+    if (!isLogged) {
+        createAuthNote.textContent = "You must be logged in as an agent to add houses.";
+        createAuthNote.classList.remove("d-none");
+    } else if (!agent) {
+        createAuthNote.textContent = "Only agents can add houses.";
+        createAuthNote.classList.remove("d-none");
+    } else {
+        createAuthNote.classList.add("d-none");
+    }
 }
 
 function logout() {
@@ -177,8 +227,13 @@ function openCreateSection(e) {
     e.preventDefault();
 
     if (!getToken()) {
-        showMessage("You must be logged in to add houses.", "warning");
+        showMessage("You must be logged in as an agent to add houses.", "warning");
         openAuthModal("login");
+        return;
+    }
+
+    if (!isAgent()) {
+        showMessage("Only agents can add houses.", "warning");
         return;
     }
 
@@ -466,7 +521,12 @@ async function createHouse(e) {
     const token = getToken();
 
     if (!token) {
-        showMessage("Login first to create a house.", "warning");
+        showMessage("Login as an agent first to create a house.", "warning");
+        return;
+    }
+
+    if (!isAgent()) {
+        showMessage("Only agents can create houses.", "warning");
         return;
     }
 

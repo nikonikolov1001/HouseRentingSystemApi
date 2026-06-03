@@ -1,5 +1,7 @@
 using HouseRentingSystemApi.Data;
 using HouseRentingSystemApi.Data.Entities;
+using HouseRentingSystemApi.Services.Agents;
+using HouseRentingSystemApi.Services.Houses;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.AspNetCore.Identity;
 using Microsoft.EntityFrameworkCore;
@@ -16,6 +18,8 @@ namespace HouseRentingSystemApi
             var builder = WebApplication.CreateBuilder(args);
 
             builder.Services.AddControllers();
+            builder.Services.AddScoped<IAgentService, AgentService>();
+            builder.Services.AddScoped<IHouseService, HouseService>();
 
             builder.Services.AddCors(options =>
             {

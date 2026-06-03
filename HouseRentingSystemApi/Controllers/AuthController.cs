@@ -1,3 +1,4 @@
+using HouseRentingSystemApi.Data.DataConstants;
 using HouseRentingSystemApi.Data.Entities;
 using HouseRentingSystemApi.Models.Authorization;
 using Microsoft.AspNetCore.Identity;
@@ -45,7 +46,7 @@ namespace HouseRentingSystemApi.Controllers
             {
                 return Unauthorized(new { message = "Invalid email or password" });
             }
-            var token = GenerateJwtToken(user);
+            var token = await GenerateJwtToken(user);
             return Ok(new
             {
                 message = "Login successful",
@@ -96,6 +97,8 @@ namespace HouseRentingSystemApi.Controllers
 
             if (result.Succeeded)
             {
+                await _userManager.AddToRoleAsync(newUser, AppRoles.User);
+
                 return Ok(new
                 {
                     message = "Successfully registered",
@@ -112,7 +115,7 @@ namespace HouseRentingSystemApi.Controllers
             });
         }
 
-        private string GenerateJwtToken(ApplicationUser user)
+        private async Task<string> GenerateJwtToken(ApplicationUser user)
         {
             var jwtSection = configuration.GetSection("Jwt");
             var key = jwtSection["Key"]!;
@@ -125,6 +128,12 @@ namespace HouseRentingSystemApi.Controllers
                 new Claim(ClaimTypes.NameIdentifier, user.Id),
                 new Claim(ClaimTypes.Name, user.UserName!)
             };
+
+            var roles = await _userManager.GetRolesAsync(user);
+            foreach (var role in roles)
+            {
+                claims.Add(new Claim(ClaimTypes.Role, role));
+            }
 
             var signingKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(key));
             var credentials = new SigningCredentials(signingKey, SecurityAlgorithms.HmacSha256);
