@@ -59,6 +59,21 @@ namespace HouseRentingSystemApi.Services.Houses
                     h.Description.ToLower().Contains(searchTerm));
             }
 
+            if (model.MinPrice.HasValue)
+            {
+                query = query.Where(h => h.PricePerMonth >= model.MinPrice.Value);
+            }
+
+            if (model.MaxPrice.HasValue)
+            {
+                query = query.Where(h => h.PricePerMonth <= model.MaxPrice.Value);
+            }
+
+            if (model.IsRented.HasValue)
+            {
+                query = query.Where(h => (h.RenterId != null) == model.IsRented.Value);
+            }
+
             query = model.Sorting switch
             {
                 HouseSorting.PriceAscending => query.OrderBy(h => h.PricePerMonth),

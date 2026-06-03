@@ -32,6 +32,9 @@ const housesLink = document.getElementById("housesLink");
 const categoryFilter = document.getElementById("categoryFilter");
 const searchInput = document.getElementById("searchInput");
 const sortingSelect = document.getElementById("sortingSelect");
+const minPriceInput = document.getElementById("minPriceInput");
+const maxPriceInput = document.getElementById("maxPriceInput");
+const rentalStatusSelect = document.getElementById("rentalStatusSelect");
 
 const previousPageBtn = document.getElementById("previousPageBtn");
 const nextPageBtn = document.getElementById("nextPageBtn");
@@ -63,6 +66,21 @@ categoryFilter.addEventListener("change", () => {
 });
 
 sortingSelect.addEventListener("change", () => {
+    currentPage = 1;
+    loadHouses();
+});
+
+minPriceInput.addEventListener("input", () => {
+    currentPage = 1;
+    loadHouses();
+});
+
+maxPriceInput.addEventListener("input", () => {
+    currentPage = 1;
+    loadHouses();
+});
+
+rentalStatusSelect.addEventListener("change", () => {
     currentPage = 1;
     loadHouses();
 });
@@ -341,6 +359,18 @@ async function loadHouses() {
             query.append("SearchTerm", searchInput.value.trim());
         }
 
+        if (minPriceInput.value) {
+            query.append("MinPrice", minPriceInput.value);
+        }
+
+        if (maxPriceInput.value) {
+            query.append("MaxPrice", maxPriceInput.value);
+        }
+
+        if (rentalStatusSelect.value) {
+            query.append("IsRented", rentalStatusSelect.value);
+        }
+
         query.append("Sorting", sortingSelect.value);
         query.append("CurrentPage", currentPage.toString());
 
@@ -362,7 +392,7 @@ async function loadHouses() {
 
         fillCategories(categories);
 
-        maxPage = Math.ceil(totalHousesCount / 3);
+        maxPage = Math.ceil(totalHousesCount / 6);
         if (maxPage < 1) {
             maxPage = 1;
         }
@@ -570,6 +600,9 @@ function resetFilters() {
     categoryFilter.value = "";
     searchInput.value = "";
     sortingSelect.value = "0";
+    minPriceInput.value = "";
+    maxPriceInput.value = "";
+    rentalStatusSelect.value = "";
     currentPage = 1;
 
     loadHouses();
