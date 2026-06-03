@@ -2,8 +2,8 @@
 {
     public enum CategoryViewEnum
     {
-        SingleBedroom = 1,
-        DoubleBedroom = 2,
-        SingleFamily = 3
+        Cottage = 1,
+        SingleFamily = 2,
+        Duplex = 3
     }
 }

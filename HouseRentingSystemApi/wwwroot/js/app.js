@@ -1,42 +1,94 @@
 const tokenKey = "hrs_jwt_token";
 
 const housesGrid = document.getElementById("housesGrid");
+const myHousesGrid = document.getElementById("myHousesGrid");
 const messageBox = document.getElementById("messageBox");
+
 const authState = document.getElementById("authState");
 const createForm = document.getElementById("createHouseForm");
 const createAuthNote = document.getElementById("createAuthNote");
+
 const guestActions = document.getElementById("guestActions");
 const userActions = document.getElementById("userActions");
+
 const authModalTitle = document.getElementById("authModalTitle");
 const loginForm = document.getElementById("loginForm");
 const registerForm = document.getElementById("registerForm");
+
 const openLoginBtn = document.getElementById("openLoginBtn");
 const openRegisterBtn = document.getElementById("openRegisterBtn");
+
+const housesSection = document.getElementById("houses");
+const myHousesSection = document.getElementById("myHouses");
 const createSection = document.getElementById("create");
+
 const addHouseNavItem = document.getElementById("addHouseNavItem");
+const myHousesNavItem = document.getElementById("myHousesNavItem");
+
 const addHouseLink = document.getElementById("addHouseLink");
+const myHousesLink = document.getElementById("myHousesLink");
+const housesLink = document.getElementById("housesLink");
 
 const categoryFilter = document.getElementById("categoryFilter");
 const searchInput = document.getElementById("searchInput");
 const sortingSelect = document.getElementById("sortingSelect");
 
+const previousPageBtn = document.getElementById("previousPageBtn");
+const nextPageBtn = document.getElementById("nextPageBtn");
+const pageInfo = document.getElementById("pageInfo");
+
 const authModal = new bootstrap.Modal(document.getElementById("authModal"));
 
-document.getElementById("refreshBtn").addEventListener("click", loadHouses);
+let currentPage = 1;
+let maxPage = 1;
+
+document.getElementById("refreshBtn").addEventListener("click", () => {
+    currentPage = 1;
+    loadHouses();
+});
+
+document.getElementById("refreshMyHousesBtn").addEventListener("click", loadMyHouses);
 document.getElementById("logoutBtn").addEventListener("click", logout);
+
 loginForm.addEventListener("submit", login);
 registerForm.addEventListener("submit", register);
 createForm.addEventListener("submit", createHouse);
+
 openLoginBtn.addEventListener("click", () => openAuthModal("login"));
 openRegisterBtn.addEventListener("click", () => openAuthModal("register"));
 
-categoryFilter.addEventListener("change", loadHouses);
-sortingSelect.addEventListener("change", loadHouses);
-searchInput.addEventListener("input", loadHouses);
+categoryFilter.addEventListener("change", () => {
+    currentPage = 1;
+    loadHouses();
+});
 
-if (addHouseLink) {
-    addHouseLink.addEventListener("click", openCreateSection);
-}
+sortingSelect.addEventListener("change", () => {
+    currentPage = 1;
+    loadHouses();
+});
+
+searchInput.addEventListener("input", () => {
+    currentPage = 1;
+    loadHouses();
+});
+
+previousPageBtn.addEventListener("click", () => {
+    if (currentPage > 1) {
+        currentPage--;
+        loadHouses();
+    }
+});
+
+nextPageBtn.addEventListener("click", () => {
+    if (currentPage < maxPage) {
+        currentPage++;
+        loadHouses();
+    }
+});
+
+addHouseLink.addEventListener("click", openCreateSection);
+myHousesLink.addEventListener("click", openMyHousesSection);
+housesLink.addEventListener("click", openHousesSection);
 
 updateAuthState();
 loadHouses();
@@ -64,16 +116,24 @@ function updateAuthState() {
 
         guestActions.classList.add("d-none");
         userActions.classList.remove("d-none");
+
         addHouseNavItem.classList.remove("d-none");
-        createSection.classList.remove("d-none");
+        myHousesNavItem.classList.remove("d-none");
+
+        createSection.classList.add("d-none");
     } else {
         authState.textContent = "Guest";
         authState.className = "badge text-bg-secondary";
 
         guestActions.classList.remove("d-none");
         userActions.classList.add("d-none");
-        createSection.classList.add("d-none");
+
         addHouseNavItem.classList.add("d-none");
+        myHousesNavItem.classList.add("d-none");
+
+        createSection.classList.add("d-none");
+        myHousesSection.classList.add("d-none");
+        housesSection.classList.remove("d-none");
     }
 
     Array.from(createForm.elements).forEach(el => {
@@ -103,19 +163,49 @@ function openAuthModal(mode) {
     authModal.show();
 }
 
+function openHousesSection(e) {
+    e.preventDefault();
+
+    housesSection.classList.remove("d-none");
+    myHousesSection.classList.add("d-none");
+    createSection.classList.add("d-none");
+
+    housesSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
+
 function openCreateSection(e) {
     e.preventDefault();
 
     if (!getToken()) {
-        showMessage("Трябва да си логнат, за да добавяш къщи.", "warning");
+        showMessage("You must be logged in to add houses.", "warning");
         openAuthModal("login");
         return;
     }
 
+    housesSection.classList.add("d-none");
+    myHousesSection.classList.add("d-none");
     createSection.classList.remove("d-none");
+
     createSection.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
+async function openMyHousesSection(e) {
+    e.preventDefault();
+
+    if (!getToken()) {
+        showMessage("You must be logged in to see your houses.", "warning");
+        openAuthModal("login");
+        return;
+    }
+
+    housesSection.classList.add("d-none");
+    createSection.classList.add("d-none");
+    myHousesSection.classList.remove("d-none");
+
+    await loadMyHouses();
+
+    myHousesSection.scrollIntoView({ behavior: "smooth", block: "start" });
+}
 async function login(e) {
     e.preventDefault();
     hideMessage();
@@ -127,7 +217,9 @@ async function login(e) {
 
     const response = await fetch("/login", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json"
+        },
         body: JSON.stringify(payload)
     });
 
@@ -143,6 +235,7 @@ async function login(e) {
     updateAuthState();
     authModal.hide();
     loginForm.reset();
+
     showMessage("Login successful.", "success");
 }
 
@@ -158,11 +251,15 @@ async function register(e) {
 
     const response = await fetch("/register", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: {
+            "Content-Type": "application/json"
+        },
         body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Registration failed:", response.status, errorText);
         showMessage("Registration failed.", "danger");
         return;
     }
@@ -179,22 +276,18 @@ async function loadHouses() {
         </div>`;
 
     try {
-        const category = categoryFilter.value;
-        const searchTerm = searchInput.value.trim();
-        const sorting = sortingSelect.value;
-
         const query = new URLSearchParams();
 
-        if (category) {
-            query.append("Category", category);
+        if (categoryFilter.value) {
+            query.append("Category", categoryFilter.value);
         }
 
-        if (searchTerm) {
-            query.append("SearchTerm", searchTerm);
+        if (searchInput.value.trim()) {
+            query.append("SearchTerm", searchInput.value.trim());
         }
 
-        query.append("Sorting", sorting);
-        query.append("CurrentPage", "1");
+        query.append("Sorting", sortingSelect.value);
+        query.append("CurrentPage", currentPage.toString());
 
         const response = await fetch(`/api/House/All?${query.toString()}`);
 
@@ -210,8 +303,16 @@ async function loadHouses() {
 
         const houses = result.houses || result.Houses || [];
         const categories = result.categories || result.Categories || [];
+        const totalHousesCount = result.totalHousesCount || result.TotalHousesCount || 0;
 
         fillCategories(categories);
+
+        maxPage = Math.ceil(totalHousesCount / 3);
+        if (maxPage < 1) {
+            maxPage = 1;
+        }
+
+        updatePagination();
 
         if (!houses.length) {
             housesGrid.innerHTML = `
@@ -221,21 +322,7 @@ async function loadHouses() {
             return;
         }
 
-        housesGrid.innerHTML = houses.map(h => `
-            <div class="col-12 col-sm-6 col-lg-4">
-                <div class="card house-card h-100 shadow-sm">
-                    <img src="${escapeHtml(h.imageUrl)}" class="card-img-top" alt="${escapeHtml(h.title)}">
-                    <div class="card-body d-flex flex-column">
-                        <h5 class="card-title">${escapeHtml(h.title)}</h5>
-                        <p class="card-text mb-1">${escapeHtml(h.address)}</p>
-                        <p class="small text-muted mb-3">$${Number(h.pricePerMonth || 0).toFixed(2)}/month</p>
-                        <button class="btn btn-outline-primary mt-auto" onclick="showDetails(${h.id})">
-                            Details
-                        </button>
-                    </div>
-                </div>
-            </div>
-        `).join("");
+        housesGrid.innerHTML = houses.map(renderHouseCard).join("");
 
     } catch (err) {
         console.error(err);
@@ -245,6 +332,81 @@ async function loadHouses() {
                 <div class="alert alert-danger">Error while loading houses.</div>
             </div>`;
     }
+}
+
+async function loadMyHouses() {
+    myHousesGrid.innerHTML = `
+        <div class="col-12">
+            <div class="alert alert-light">Loading your houses...</div>
+        </div>`;
+
+    const token = getToken();
+
+    if (!token) {
+        myHousesGrid.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-warning">Login first to see your houses.</div>
+            </div>`;
+        return;
+    }
+
+    try {
+        const response = await fetch("/api/House/Mine", {
+            method: "GET",
+            headers: {
+                "Authorization": `Bearer ${token}`
+            }
+        });
+
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error("My Houses failed:", response.status, errorText);
+
+            myHousesGrid.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-danger">Could not load your houses.</div>
+                </div>`;
+            return;
+        }
+
+        const houses = await response.json();
+
+        if (!houses.length) {
+            myHousesGrid.innerHTML = `
+                <div class="col-12">
+                    <div class="alert alert-secondary">You have not added any houses yet.</div>
+                </div>`;
+            return;
+        }
+
+        myHousesGrid.innerHTML = houses.map(renderHouseCard).join("");
+
+    } catch (err) {
+        console.error(err);
+
+        myHousesGrid.innerHTML = `
+            <div class="col-12">
+                <div class="alert alert-danger">Error while loading your houses.</div>
+            </div>`;
+    }
+}
+
+function renderHouseCard(h) {
+    return `
+        <div class="col-12 col-sm-6 col-lg-4">
+            <div class="card house-card h-100 shadow-sm">
+                <img src="${escapeHtml(h.imageUrl)}" class="card-img-top" alt="${escapeHtml(h.title)}">
+                <div class="card-body d-flex flex-column">
+                    <h5 class="card-title">${escapeHtml(h.title)}</h5>
+                    <p class="card-text mb-1">${escapeHtml(h.address)}</p>
+                    <p class="small text-muted mb-1">${escapeHtml(h.category || "")}</p>
+                    <p class="small text-muted mb-3">$${Number(h.pricePerMonth || 0).toFixed(2)} / month</p>
+                    <button class="btn btn-outline-primary mt-auto" onclick="showDetails(${h.id})">
+                        Details
+                    </button>
+                </div>
+            </div>
+        </div>`;
 }
 
 function fillCategories(categories) {
@@ -258,6 +420,13 @@ function fillCategories(categories) {
     });
 
     categoryFilter.value = currentValue;
+}
+
+function updatePagination() {
+    pageInfo.textContent = `Page ${currentPage} of ${maxPage}`;
+
+    previousPageBtn.disabled = currentPage <= 1;
+    nextPageBtn.disabled = currentPage >= maxPage;
 }
 
 async function showDetails(id) {
@@ -279,6 +448,11 @@ async function showDetails(id) {
         <p><strong>Description:</strong> ${escapeHtml(h.description || "No description")}</p>
         <p><strong>Price:</strong> $${Number(h.pricePerMonth || 0).toFixed(2)} / month</p>
         <p><strong>Category:</strong> ${escapeHtml(h.category || "")}</p>
+        <p><strong>Status:</strong> ${h.isRented ? "Rented" : "Not rented"}</p>
+        <hr>
+        <h5>Owner Info</h5>
+        <p><strong>Name:</strong> ${escapeHtml(h.ownerName || "Unknown")}</p>
+        <p><strong>Email:</strong> ${escapeHtml(h.ownerEmail || "No email")}</p>
     `;
 
     const modal = new bootstrap.Modal(document.getElementById("detailsModal"));
@@ -324,13 +498,19 @@ async function createHouse(e) {
     showMessage("House created successfully.", "success");
     e.target.reset();
 
+    currentPage = 1;
     await loadHouses();
+
+    if (!myHousesSection.classList.contains("d-none")) {
+        await loadMyHouses();
+    }
 }
 
 function resetFilters() {
     categoryFilter.value = "";
     searchInput.value = "";
     sortingSelect.value = "0";
+    currentPage = 1;
 
     loadHouses();
 }

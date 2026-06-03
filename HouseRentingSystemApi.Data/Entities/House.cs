@@ -15,26 +15,34 @@ namespace HouseRentingSystemApi.Data.Entities
         public int Id { get; init; }
         [Required]
         [MaxLength(TitleMaxLength)]
-        public string Title { get; set; } 
+        public string Title { get; set; } = null!;
         [Required]
         [MaxLength(AddressMaxLength)]
-        public string Address { get; set; }  
+        public string Address { get; set; } = null!;
 
         [Required]
         [MaxLength(DescriptionMaxLength)]
-        public string Description { get; set; }
-        public string ImageUrl { get; set; }
+        public string Description { get; set; } = null!;
 
+        [Required]
+        public string ImageUrl { get; set; } = null!;
+
+        [Column(TypeName = "decimal(18, 2)")]
         public decimal PricePerMonth { get; set; }
 
-        public Category Category { get; set; }
+        public Category Category { get; set; } = null!;
         [ForeignKey(nameof(Category))]
         public int CategoryId { get; set; } 
 
-        public ApplicationUser Owner { get; set; }
-        [ForeignKey(nameof(Owner))]
+        public Guid AgentId { get; set; }
 
-        public string? UserId { get; set; }
+        [ForeignKey(nameof(AgentId))]
+        public Agent Agent { get; set; } = null!;
+
+        public string? RenterId { get; set; }
+
+        [ForeignKey(nameof(RenterId))]
+        public ApplicationUser? Renter { get; set; }
 
     }
 }

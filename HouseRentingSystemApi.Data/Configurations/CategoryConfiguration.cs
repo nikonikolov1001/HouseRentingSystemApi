@@ -19,17 +19,17 @@ namespace HouseRentingSystemApi.Data.Configurations
             new Category()
             {
                 Id = 1,
-                Name = "Apartment"
+                Name = "Cottage"
             },
             new Category()
             {
                 Id = 2,
-                Name = "Room"
+                Name = "Single-Family"
             },
             new Category()
             {
                 Id = 3,
-                Name = "House"
+                Name = "Duplex"
             }
         });
         }

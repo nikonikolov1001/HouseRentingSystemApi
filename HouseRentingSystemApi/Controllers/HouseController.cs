@@ -9,10 +9,11 @@ using System.Security.Claims;
 
 namespace HouseRentingSystemApi.Controllers
 {
+    [ApiController]
     [Route("api/[controller]")]
     public class HouseController : ControllerBase
     {
-        private AppDbContext context;
+        private readonly AppDbContext context;
 
         public HouseController(AppDbContext context)
         {
@@ -24,13 +25,15 @@ namespace HouseRentingSystemApi.Controllers
         public async Task<IActionResult> GetIndex()
         {
             var totalHouses = await context.Houses.CountAsync();
-            var totalRents = 0; // Will implement when Rent entity is added
 
             var houses = await context.Houses
                 .AsNoTracking()
+                .Include(h => h.Category)
+                .Include(h => h.Agent)
+                .ThenInclude(a => a.User)
                 .OrderByDescending(h => h.Id)
                 .Take(3)
-                .Select(h => new HouseViewModel()
+                .Select(h => new HouseViewModel
                 {
                     Id = h.Id,
                     Title = h.Title,
@@ -39,15 +42,15 @@ namespace HouseRentingSystemApi.Controllers
                     Description = h.Description,
                     PricePerMonth = h.PricePerMonth,
                     Category = h.Category.Name,
-                    IsRented = false, // Will implement when Rent entity is added
-                    OwnerName = h.Owner != null ? h.Owner.UserName ?? string.Empty : string.Empty
+                    IsRented = h.RenterId != null,
+                    OwnerName = h.Agent.User.UserName ?? string.Empty
                 })
                 .ToListAsync();
 
             var model = new IndexViewModel
             {
                 TotalHouses = totalHouses,
-                TotalRents = totalRents,
+                TotalRents = await context.Houses.CountAsync(h => h.RenterId != null),
                 Houses = houses
             };
 
@@ -58,48 +61,47 @@ namespace HouseRentingSystemApi.Controllers
         [Produces(typeof(AllHousesQueryModel))]
         public async Task<IActionResult> GetAll([FromQuery] AllHousesQueryModel model)
         {
-            var query = context.Houses.AsQueryable();
+            if (model.CurrentPage < 1)
+            {
+                model.CurrentPage = 1;
+            }
 
-            // Filter by category
+            var query = context.Houses
+                .AsNoTracking()
+                .Include(h => h.Category)
+                .Include(h => h.Agent)
+                .ThenInclude(a => a.User)
+                .AsQueryable();
+
             if (!string.IsNullOrWhiteSpace(model.Category))
             {
                 query = query.Where(h => h.Category.Name == model.Category);
             }
 
-            // Search by term
             if (!string.IsNullOrWhiteSpace(model.SearchTerm))
             {
                 var searchTerm = model.SearchTerm.ToLower();
+
                 query = query.Where(h =>
                     h.Title.ToLower().Contains(searchTerm) ||
                     h.Address.ToLower().Contains(searchTerm) ||
-                    h.Description.ToLower().Contains(searchTerm)
-                );
+                    h.Description.ToLower().Contains(searchTerm));
             }
 
-            // Sorting
-            switch (model.Sorting)
+            query = model.Sorting switch
             {
-                case HouseSorting.PriceAscending:
-                    query = query.OrderBy(h => h.PricePerMonth);
-                    break;
-                case HouseSorting.NotRentedFirst:
-                    query = query.OrderByDescending(h => h.Id); // Will add rent status when Rent entity is ready
-                    break;
-                case HouseSorting.Newest:
-                default:
-                    query = query.OrderByDescending(h => h.Id);
-                    break;
-            }
+                HouseSorting.PriceAscending => query.OrderBy(h => h.PricePerMonth),
+                HouseSorting.NotRentedFirst => query.OrderBy(h => h.RenterId != null).ThenByDescending(h => h.Id),
+                HouseSorting.Newest => query.OrderByDescending(h => h.Id),
+                _ => query.OrderByDescending(h => h.Id)
+            };
 
-            // Get total count before paging
             var totalCount = await query.CountAsync();
 
-            // Paging
             var houses = await query
                 .Skip((model.CurrentPage - 1) * AllHousesQueryModel.HousesPerPage)
                 .Take(AllHousesQueryModel.HousesPerPage)
-                .Select(h => new HouseViewModel()
+                .Select(h => new HouseViewModel
                 {
                     Id = h.Id,
                     Title = h.Title,
@@ -108,14 +110,14 @@ namespace HouseRentingSystemApi.Controllers
                     Description = h.Description,
                     PricePerMonth = h.PricePerMonth,
                     Category = h.Category.Name,
-                    IsRented = false, // Will implement when Rent entity is added
-                    OwnerName = h.Owner != null ? h.Owner.UserName ?? string.Empty : string.Empty
+                    IsRented = h.RenterId != null,
+                    OwnerName = h.Agent.User.UserName ?? string.Empty
                 })
                 .ToListAsync();
 
-            // Get unique categories
             var categories = await context.Categories
                 .AsNoTracking()
+                .OrderBy(c => c.Name)
                 .Select(c => c.Name)
                 .Distinct()
                 .ToListAsync();
@@ -127,14 +129,51 @@ namespace HouseRentingSystemApi.Controllers
             return Ok(model);
         }
 
+        [Authorize]
+        [HttpGet("Mine")]
+        [Produces(typeof(IEnumerable<HouseViewModel>))]
+        public async Task<IActionResult> Mine()
+        {
+            var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
+
+            if (string.IsNullOrWhiteSpace(userId))
+            {
+                return Unauthorized(new { message = "User is not authenticated." });
+            }
+
+            var houses = await context.Houses
+                .AsNoTracking()
+                .Include(h => h.Category)
+                .Include(h => h.Agent)
+                .ThenInclude(a => a.User)
+                .Where(h => h.Agent.UserId == userId)
+                .OrderByDescending(h => h.Id)
+                .Select(h => new HouseViewModel
+                {
+                    Id = h.Id,
+                    Title = h.Title,
+                    Address = h.Address,
+                    ImageUrl = h.ImageUrl,
+                    Description = h.Description,
+                    PricePerMonth = h.PricePerMonth,
+                    Category = h.Category.Name,
+                    IsRented = h.RenterId != null,
+                    OwnerName = h.Agent.User.UserName ?? string.Empty
+                })
+                .ToListAsync();
+
+            return Ok(houses);
+        }
+
         [HttpGet("{id}")]
-        [Produces(typeof(HouseViewModel))]
+        [Produces(typeof(HouseDetailsViewModel))]
         public async Task<IActionResult> GetById(int id)
         {
             var house = await context.Houses
-                .Include(h => h.Owner)
-                .Include(h => h.Category)
                 .AsNoTracking()
+                .Include(h => h.Agent)
+                .ThenInclude(a => a.User)
+                .Include(h => h.Category)
                 .FirstOrDefaultAsync(h => h.Id == id);
 
             if (house == null)
@@ -142,7 +181,7 @@ namespace HouseRentingSystemApi.Controllers
                 return NotFound(new { message = "House not found" });
             }
 
-            var model = new HouseViewModel()
+            var model = new HouseDetailsViewModel
             {
                 Id = house.Id,
                 Title = house.Title,
@@ -151,8 +190,9 @@ namespace HouseRentingSystemApi.Controllers
                 Description = house.Description,
                 PricePerMonth = house.PricePerMonth,
                 Category = house.Category?.Name ?? string.Empty,
-                IsRented = false, // Will implement when Rent entity is added
-                OwnerName = house.Owner?.UserName ?? string.Empty
+                IsRented = house.RenterId != null,
+                OwnerName = house.Agent.User.UserName ?? string.Empty,
+                OwnerEmail = house.Agent.User.Email ?? string.Empty
             };
 
             return Ok(model);
@@ -163,53 +203,80 @@ namespace HouseRentingSystemApi.Controllers
         [Produces(typeof(HouseDetailModel))]
         public async Task<IActionResult> Create([FromBody] HouseDetailModel model)
         {
-            if (ModelState.IsValid == false)
+            if (!ModelState.IsValid)
             {
-                return BadRequest();
+                return BadRequest(new
+                {
+                    message = "Invalid house data",
+                    errors = ModelState
+                });
             }
 
             var userId = User.FindFirstValue(ClaimTypes.NameIdentifier);
 
-            var newHouse = new House()
+            if (string.IsNullOrWhiteSpace(userId))
             {
-                Description = model.Description,
-                PricePerMonth = model.PricePerMonth,
-                Address = model.Address,
-                Title = model.Title,
-                ImageUrl = model.ImageUrl,
-                UserId = userId
-            };
+                return Unauthorized(new { message = "User is not authenticated." });
+            }
+
+            var agent = await context.Agents
+                .AsNoTracking()
+                .FirstOrDefaultAsync(a => a.UserId == userId);
+
+            if (agent == null)
+            {
+                return BadRequest(new { message = "Only agents can add houses." });
+            }
+
+            var categoryName = GetCategoryName(model.Category);
 
             var category = await context.Categories
-                .FirstOrDefaultAsync(c => c.Name ==  model.Category
-                .ToString());
-            if(category == null)
+                .FirstOrDefaultAsync(c => c.Name == categoryName);
+
+            if (category == null)
             {
-                var newCategory = new Category()
+                category = new Category
                 {
-                    Name = model.Category.ToString(),
+                    Name = categoryName
                 };
-                context.Categories.Add(newCategory);
+
+                context.Categories.Add(category);
                 await context.SaveChangesAsync();
-                newHouse.CategoryId = newCategory.Id; 
-                
             }
-            else
+
+            var newHouse = new House
             {
-                newHouse.CategoryId = category.Id;
-            }
+                Title = model.Title,
+                Address = model.Address,
+                ImageUrl = model.ImageUrl,
+                Description = model.Description,
+                PricePerMonth = model.PricePerMonth,
+                CategoryId = category.Id,
+                AgentId = agent.Id
+            };
+
             context.Houses.Add(newHouse);
             await context.SaveChangesAsync();
-            return Created($"api/{newHouse.Id}", new HouseDetailModel()
-                {
-                    Id = newHouse.Id,
-                    Address = newHouse.Address,
-                    ImageUrl = newHouse.ImageUrl,
-                    Title = newHouse.Title,
-                    Description = newHouse.Description,
-                    PricePerMonth = newHouse.PricePerMonth,
-                    Category = model.Category
+
+            return Created($"/api/House/{newHouse.Id}", new HouseDetailModel
+            {
+                Id = newHouse.Id,
+                Address = newHouse.Address,
+                ImageUrl = newHouse.ImageUrl,
+                Title = newHouse.Title,
+                Description = newHouse.Description,
+                PricePerMonth = newHouse.PricePerMonth,
+                Category = model.Category
             });
         }
+
+        private static string GetCategoryName(CategoryViewEnum category)
+            => category switch
+            {
+                CategoryViewEnum.Cottage => "Cottage",
+                CategoryViewEnum.SingleFamily => "Single-Family",
+                CategoryViewEnum.Duplex => "Duplex",
+                _ => "Cottage"
+            };
     }
 }

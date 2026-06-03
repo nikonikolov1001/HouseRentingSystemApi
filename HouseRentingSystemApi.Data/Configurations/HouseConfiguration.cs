@@ -1,11 +1,6 @@
-﻿using HouseRentingSystemApi.Data.Entities;
+using HouseRentingSystemApi.Data.Entities;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 
 namespace HouseRentingSystemApi.Data.Configurations
 {
@@ -22,118 +17,42 @@ namespace HouseRentingSystemApi.Data.Configurations
         private IEnumerable<House> SeedHouses()
         {
             return new List<House>
-        {
-            new House
             {
-                Id = 11,
-                Title = "Modern Apartment in Sofia Center",
-                Address = "ul. Vitosha 15, Sofia",
-                Description = "Spacious modern apartment near city center with great view.",
-                ImageUrl = "https://images.unsplash.com/photo-1502672260266-1c1ef2d93688",
-                PricePerMonth = 850,
-                CategoryId = 1,
-                UserId = null
-            },
-            new House
-            {
-                Id = 12,
-                Title = "Cozy Studio in Studentski Grad",
-                Address = "Studentski Grad 45, Sofia",
-                Description = "Perfect for students, fully furnished studio.",
-                ImageUrl = "https://images.unsplash.com/photo-1493809842364-78817add7ffb",
-                PricePerMonth = 450,
-                CategoryId = 2,
-                UserId = null
-            },
-            new House
-            {
-                Id = 13,
-                Title = "Luxury Penthouse",
-                Address = "Lozenets, Sofia",
-                Description = "High-end penthouse with terrace and parking.",
-                ImageUrl = "https://images.unsplash.com/photo-1560448204-e02f11c3d0e2",
-                PricePerMonth = 2000,
-                CategoryId = 1,
-                UserId = null
-            },
-            new House
-            {
-                Id = 14,
-                Title = "Small House in Village",
-                Address = "Bistritsa Village",
-                Description = "Quiet place with yard and nature around.",
-                ImageUrl = "https://images.unsplash.com/photo-1572120360610-d971b9d7767c",
-                PricePerMonth = 300,
-                CategoryId = 3,
-                UserId = null
-            },
-            new House
-            {
-                Id = 15,
-                Title = "Family House with Garden",
-                Address = "Dragalevtsi, Sofia",
-                Description = "Big house suitable for family with garden.",
-                ImageUrl = "https://images.unsplash.com/photo-1600585154340-be6161a56a0c",
-                PricePerMonth = 1200,
-                CategoryId = 3,
-                UserId = null
-            },
-            new House
-            {
-                Id = 16,
-                Title = "One Bedroom Apartment",
-                Address = "Mladost 2, Sofia",
-                Description = "Comfortable one-bedroom apartment.",
-                ImageUrl = "https://images.unsplash.com/photo-1507089947368-19c1da9775ae",
-                PricePerMonth = 600,
-                CategoryId = 1,
-                UserId = null
-            },
-            new House
-            {
-                Id = 17,
-                Title = "Cheap Room for Rent",
-                Address = "Nadezhda, Sofia",
-                Description = "Budget room, ideal for short stay.",
-                ImageUrl = "https://images.unsplash.com/photo-1554995207-c18c203602cb",
-                PricePerMonth = 200,
-                CategoryId = 2,
-                UserId = null
-            },
-            new House
-            {
-                Id = 18,
-                Title = "Sea View Apartment",
-                Address = "Varna Center",
-                Description = "Beautiful apartment with sea view.",
-                ImageUrl = "https://images.unsplash.com/photo-1494526585095-c41746248156",
-                PricePerMonth = 900,
-                CategoryId = 1,
-                UserId = null
-            },
-            new House
-            {
-                Id = 19,
-                Title = "Mountain Cabin",
-                Address = "Borovets",
-                Description = "Wooden cabin perfect for winter getaway.",
-                ImageUrl = "https://images.unsplash.com/photo-1449844908441-8829872d2607",
-                PricePerMonth = 700,
-                CategoryId = 3,
-                UserId = null
-            },
-            new House
-            {
-                Id = 20,
-                Title = "Minimalist Apartment",
-                Address = "Plovdiv Center",
-                Description = "Clean and minimalist design, great location.",
-                ImageUrl = "https://images.unsplash.com/photo-1499951360447-b19be8fe80f5",
-                PricePerMonth = 650,
-                CategoryId = 1,
-                UserId = null
-            }
-        };
+                new House
+                {
+                    Id = 1,
+                    Title = "Big House Marina",
+                    Address = "North London, UK (near the border)",
+                    Description = "A big house for your whole family. Don't miss to buy a house with three bedrooms.",
+                    ImageUrl = "https://www.luxury-architecture.net/wp-content/uploads/2017/12/1513217889-7597-FAIRWAYS-010.jpg",
+                    PricePerMonth = 2100.00M,
+                    CategoryId = 3,
+                    AgentId = Guid.Parse("44a41a1c-943b-47e2-80e6-47463b6f139b"),
+                    RenterId = "6d5800ce-d726-4fc8-83d9-d6b3ac1f591e"
+                },
+                new House
+                {
+                    Id = 2,
+                    Title = "Family House Comfort",
+                    Address = "Near the Sea Garden in Burgas, Bulgaria",
+                    Description = "It has the best comfort you will ever ask for. With two bedrooms, it is great for your family.",
+                    ImageUrl = "https://cf.bstatic.com/xdata/images/hotel/max1024x768/179489660.jpg?k=2029f6d9589b49c95dcc9503a265e292c2cdfcb5277487a0050397c3f8dd545a&o=&hp=1",
+                    PricePerMonth = 1200.00M,
+                    CategoryId = 2,
+                    AgentId = Guid.Parse("44a41a1c-943b-47e2-80e6-47463b6f139b")
+                },
+                new House
+                {
+                    Id = 3,
+                    Title = "Grand House",
+                    Address = "Boyana Neighbourhood, Sofia, Bulgaria",
+                    Description = "This luxurious house is everything you will need. It is just excellent.",
+                    ImageUrl = "https://i.pinimg.com/originals/a6/f5/85/a6f5850a77633c56e4e4ac4f867e3c00.jpg",
+                    PricePerMonth = 2000.00M,
+                    CategoryId = 2,
+                    AgentId = Guid.Parse("44a41a1c-943b-47e2-80e6-47463b6f139b")
+                }
+            };
         }
     }
 }

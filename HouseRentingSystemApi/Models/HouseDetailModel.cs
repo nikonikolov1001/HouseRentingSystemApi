@@ -11,15 +11,22 @@ namespace HouseRentingSystemApi.Models
         [BindNever]
         public int Id { get; set; }
 
-        [MaxLength(TitleMaxLength)]
+        [Required]
+        [StringLength(TitleMaxLength, MinimumLength = TitleMinLength)]
         public string Title { get; set; } = string.Empty;
 
+        [Required]
+        [StringLength(AddressMaxLength, MinimumLength = AddressMinLength)]
         public string Address { get; set; } = string.Empty;
 
+        [Required]
         public string ImageUrl { get; set; } = string.Empty;
 
+        [Required]
+        [StringLength(DescriptionMaxLength, MinimumLength = DescriptionMinLength)]
         public string Description { get; set; } = string.Empty;
 
+        [Range(PricePerMonthMinValue, PricePerMonthMaxValue)]
         public decimal PricePerMonth { get; set; }
 
         public CategoryViewEnum Category { get; set; }
